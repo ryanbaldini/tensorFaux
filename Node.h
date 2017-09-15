@@ -16,7 +16,7 @@ struct Node
 	double* gradient;			//gradient on the values
 	vector< Node* > parents;
 	vector< Node* > children;
-	activation* activate;
+	activation activate;
 	bool valuesUpdatedThisRound;
 	bool gradientUpdatedThisRound;
 	
@@ -34,11 +34,13 @@ struct InputNode: Node
 
 struct DenseNode: Node
 {
+	double* nonActivatedValues;
+	double* gradNonActivatedValues;
 	double* biases;
 	double** weights;
 	double* biases_gradient;
 	double** weights_gradient;
-	DenseNode(string name_, Node* parentNode, int nNeurons, activation* activate);
+	DenseNode(string name_, Node* parentNode, int nNeurons, activation activate_);
 	virtual void computeValues();
 	virtual void computeGradient();
 };

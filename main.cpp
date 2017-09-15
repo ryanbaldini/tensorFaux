@@ -20,18 +20,26 @@ int main()
 	
 	DNN.addInputNode("input1", dimInt);
 	DNN.addInputNode("input2", dimInt);
-	DNN.addDenseNode("dense1", "input1", 100, relu);
-	DNN.addDenseNode("dense2", "dense1", 50, relu);
-	DNN.addDenseNode("dense3", "dense2", 1, none);
+	DNN.addDenseNode("dense1", "input1", 100, activations::relu);
+	DNN.addDenseNode("dense2", "dense1", 50, activations::relu);
+	DNN.addDenseNode("dense3", "dense2", 1, activations::sigmoid);
 	
-	cout << DNN.nodes[0].name << '\n';
-	cout << DNN.nodes[0].values[0] << '\n';
-	cout << (DNN.nodes[0].children)[0]->name << '\n';
-	// cout <<
-	cout << DNN.nodes[2].values[99] << '\n';
-	cout << DNN.nodes[2].parents[0] << '\n';
-	cout << DNN.nodes[3].values[49] << '\n';
-	cout << DNN.nodes[4].values[0] << '\n';
+	// cout << DNN.nodes[0]->name << '\n';
+	// cout << DNN.nodes[0]->values[0] << '\n';
+	// cout << (DNN.nodes[0]->children)[0]->name << '\n';
+	// cout << DNN.nodes[2]->name << '\n';
+	// cout << DNN.nodes[2]->values[99] << '\n';
+	// cout << DNN.nodes[2]->values[100] << '\n';
+	// cout << DNN.nodes[2]->parents[0]->name << '\n';
+	// cout << DNN.nodes[2]->children[0]->name << '\n';
+	// cout << DNN.nodes[3]->name << '\n';
+	// cout << DNN.nodes[3]->values[49] << '\n';
+	// cout << DNN.nodes[3]->parents[0]->name << '\n';
+	// cout << DNN.nodes[3]->children[0]->name << '\n';
+	// cout << DNN.nodes[4]->name << '\n';
+	// cout << DNN.nodes[4]->values[0] << '\n';
+	// cout << DNN.nodes[4]->parents[0]->name << '\n';
+	cout << DNN.nodes[4]->values[0] << '\n';
 
 	vector< double* > input;
 	double* input1 = new double[n];
@@ -41,7 +49,12 @@ int main()
 		input1[i] = i;
 		input2[i] = i*2;
 	}
+	input.push_back(input1);
+	input.push_back(input2);
 	
+	DNN.compute(input);
+	
+	cout << DNN.nodes[4]->values[0] << '\n';
 	
 	// DNN.addInputNode(name="input1", dim = (100,100));	//adds an Input node called input1
 	// DNN.addInputNode(name="input2", dim = 1);			//adds an Input node called input1

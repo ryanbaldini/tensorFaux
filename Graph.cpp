@@ -2,7 +2,6 @@
 #include <string>
 //#include <iostream>
 #include "Graph.h"
-// #include "Node.h"
 
 using namespace std;
 
@@ -12,7 +11,7 @@ void Graph::compute(vector< double* > X)
 {
 	//reset all nodes to "not updated this round"
 	int nNodes = nodes.size();
-	for(int i=0; i<nNodes; i++) nodes[i].valuesUpdatedThisRound = false;
+	for(int i=0; i<nNodes; i++) nodes[i]->valuesUpdatedThisRound = false;
 	
 	//set input nodes to equal X
 	//in order of creation
@@ -20,10 +19,10 @@ void Graph::compute(vector< double* > X)
 	int j=0;
 	for(int i=0; i<nNodes; i++)
 	{
-		if((nodes[i].parents).size() == 0)	//this implies it has no parents, hence is an input node
+		if((nodes[i]->parents).size() == 0)	//this implies it has no parents, hence is an input node
 		{
-			nodes[i].values = X[j];	//note: only copying a pointer here
-			nodes[i].computeValues();
+			nodes[i]->values = X[j];	//note: only copying a pointer here
+			nodes[i]->computeValues();
 			j++;
 		}
 	}
@@ -37,9 +36,9 @@ vector< double* > Graph::computeAndReturn(vector< double* > X)
 	vector< double* > output;
 	for(int i=0; i<nNodes; i++)
 	{
-		if((nodes[i].children).size() == 0)	//no children -> terminal
+		if((nodes[i]->children).size() == 0)	//no children -> terminal
 		{
-			output.push_back(nodes[i].values);
+			output.push_back(nodes[i]->values);
 		}
 	}
 	return output;
@@ -47,7 +46,8 @@ vector< double* > Graph::computeAndReturn(vector< double* > X)
 
 void Graph::addInputNode(string name, vector<int> dim)
 {
-	nodes.push_back(InputNode(name, dim));
+	Node* newNode = new InputNode(name, dim);
+	nodes.push_back(newNode);
 	//no parents to deal with
 }
 
@@ -59,7 +59,7 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, activ
 	Node* parentNode;
 	for(int i=0; i<nNodes; i++)
 	{
-		if(nodes[i].name == parentNodeName)
+		if((nodes[i])->name == parentNodeName)
 		{
 			parentNode = nodes[i];
 			break;
@@ -67,52 +67,9 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, activ
 	}
 	
 	//add to nodes
-	nodes.push_back(DenseNode(name, parentNode, nNeurons, &activate));
+	Node* newNode = new DenseNode(name, parentNode, nNeurons, activate);
+	nodes.push_back(newNode);
 	
 	//add to parents' children
-	(parentNode->children).push_back(&(nodes[nodes.size()-1]));
+	(parentNode->children).push_back(newNode);
 }
-
-
-// double* Graph::compute(double* X)
-// {
-// 	//open a queue of nodes to be updated
-// 	vector<int> queue;
-// 	//create vector specifying which nodes have been computed
-// 	//(won't compute a node unless all its parents are ready)
-// 	vector<bool> done; for(int i=0; i<nodes.size(); i++) done[i] = false;
-// 	//find nodes whose parents are "input"
-// 	for(int i=0; i<nodes.size(); i++)
-// 	{
-// 		if(contains(nodes[i].parents, "input"))
-// 		{
-// 			queue.push_back(i);
-// 		}
-// 	}
-// 	//compute those layers, and add their children to the queue
-// 	int i=0;
-// 	while(i<queue.size())
-// 	{
-// 		currentNode = nodes[queue[i]];
-// 		if(!done[queue[i]])	//if this hasn't already been computed
-// 		{
-// 			//check that its parents are ready
-// 			if(parentsAreDone(currentNode))	//pass by reference
-// 			{
-// 				//compute the node
-// 				nodes[queue[i]].compute();	//for nodes with input as parent, will have to create input nodes?
-// 				//add children to queue
-// 				addChildrenToQueue(currentNode, queue);	//pass both by reference
-// 			}
-// 			else	//parents aren't done: push it to the back of the node
-// 			{
-// 				queue.push_back(queue[i]);
-// 			}
-// 			//add this node to the end, skip to next in queue
-// 		}
-// 		i++
-// 	}
-// 	//thean find those layer's children
-// 	//compute those layers
-// 	//etc
-// }
