@@ -5,6 +5,7 @@
 #include <string>
 #include "activations.h"
 #include "functions.h"
+#include "randomNumbers.h"
 
 using namespace std;
 
@@ -27,6 +28,8 @@ struct Node
 	void computeGradient();
 	virtual void computeGradOnParameters();
 	virtual void computeGradOnParents();
+	
+	virtual void printParameters();
 };
 
 struct InputNode: Node
@@ -37,6 +40,8 @@ struct InputNode: Node
 	
 	virtual void computeGradOnParameters();
 	virtual void computeGradOnParents();
+	
+	virtual void printParameters();
 };
 
 struct DenseNode: Node
@@ -47,12 +52,15 @@ struct DenseNode: Node
 	double** weights;
 	double* biases_gradient;
 	double** weights_gradient;
-	DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_);
+	
+	DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_, Normaldev& rng);
 	
 	virtual void computeMyValues();
 	
 	virtual void computeGradOnParameters();
 	virtual void computeGradOnParents();
+	
+	virtual void printParameters();
 };
 
 #endif

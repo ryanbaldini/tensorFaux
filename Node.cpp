@@ -1,7 +1,7 @@
 #include <vector>
 #include <string>
 #include "Node.h"
-// #include <iostream>
+#include <iostream>
 // #include "functions.cpp"
 //#include "activations.cpp"
 
@@ -11,6 +11,7 @@ using namespace std;
 void Node::computeMyValues() {return;}
 void Node::computeGradOnParameters() {return;}
 void Node::computeGradOnParents() {return;}
+void Node::printParameters() {return;}
 
 void Node::computeValues() 
 {
@@ -74,13 +75,15 @@ void InputNode::computeMyValues()
 {
 	return;
 }
-
 void InputNode::computeGradOnParameters()
 {
 	return;
 }
-
 void InputNode::computeGradOnParents()
+{
+	return;
+}
+void InputNode::printParameters()
 {
 	return;
 }
@@ -90,7 +93,7 @@ void InputNode::computeGradOnParents()
 // 	gradientUpdatedThisRound = true;
 // }
 
-DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_)
+DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_, Normaldev& rng)
 {
 	name = name_; 
 	dim.push_back(nNeurons);
@@ -101,13 +104,13 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	gradient = new double[dim[0]];
 	nonActivatedValues = new double[dim[0]];
 	gradNonActivatedValues = new double[dim[0]];
-	for(int i=0; i<dim[0]; i++)
-	{
-		values[i] = 0.0;
-		gradient[i] = 0.0;
-		nonActivatedValues[i] = 0.0;
-		gradNonActivatedValues[i] = 0.0;
-	}
+	// for(int i=0; i<dim[0]; i++)
+	// {
+	// 	values[i] = 0.0;
+	// 	gradient[i] = 0.0;
+	// 	nonActivatedValues[i] = 0.0;
+	// 	gradNonActivatedValues[i] = 0.0;
+	// }
 	//parameters and gradient
 	biases = new double[dim[0]];
 	biases_gradient = new double[dim[0]];
@@ -118,6 +121,16 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	{
 		weights[i] = new double[dimIn];
 		weights_gradient[i] = new double[dimIn];
+	}
+	
+	//initialize parameters at random
+	for(int i=0; i<nNeurons; i++)
+	{
+		biases[i] = rng.dev();
+		for(int j=0; j<dimIn; j++)
+		{
+			weights[i][j] = rng.dev();
+		}
 	}
 	
 	valuesUpdatedThisRound = false;
@@ -213,53 +226,20 @@ void DenseNode::computeGradOnParents()
 	}	
 }
 
-// void DenseNode::computeGradient()
-// {
-// 	//first, check that childrens' gradients have been computed
-// 	int nChildren = children.size();
-// 	for(int i=0; i<nChildren; i++)
-// 	{
-// 		if(!(children[i]->gradientUpdatedThisRound)) return;
-// 	}
-//
-//
-// 	//update gradient on non-activated values
-// 	int dimOut = dim[0];
-// 	for(int i=0; i<dimOut; i++)
-// 	{
-// 		gradNonActivatedValues[i] = activate.gradient(nonActivatedValues[i]);
-// 	}
-//
-// 	//gradient on node's parameters depends on its parents' values
-// 	//dense layer has only one parent
-// 	Node* parent = parents[0];
-// 	int dimIn = multVec(parent->dim);
-// 	for(int i=0; i<dimOut; i++)
-// 	{
-// 		double tmp = gradient[i]*gradNonActivatedValues[i];
-// 		//consider checking if tmp is zero: might save time if we initialize these to 0 upfront? esp for those multiplications for the weights
-// 		biases_gradient = tmp;
-// 		for(int j=0; j<dimIn; j++)
-// 		{
-// 			weights_gradient[i][j] = tmp*(parent->values[j])
-// 		}
-// 	}
-//
-// 	//now update gradient on parents' values
-// 	//remember, parent's gradient might have already been incremented by another child. so only increment here.
-// 	for(int i=0; i<dimIn; i++)
-// 	{
-// 		for(int j=0; j<dimOut; j++)
-// 		{
-// 			parent->gradient[i] += gradient[j]*gradNonActivatedValues[j]*weights[j,i];	//bad stride on weights, but hard to fix that without hurting something else
-// 		}
-// 	}
-//
-// 	gradientUpdatedThisRound = true;
-//
-// 	//compute gradients of parents
-// 	int nParents = parents.size();
-// 	for(int i=0; i<nParents; i++) (parents[i])->computeGradient();
-//
-// }
-
+void DenseNode::printParameters()
+{
+	int dimOut = dim[0];	
+	Node* parent = parents[0];
+	int dimIn = multVec(parent->dim);
+	
+	cout << "biases:" << '\n';
+	for(int i=0; i<dimOut; i++) cout << biases[i] << " , ";
+	cout << '\n';
+	
+	cout << "weights:" << '\n';
+	for(int i=0; i<dimOut; i++)
+	{
+		for(int j=0; j<dimIn; j++) cout << weights[i][j] << " , ";
+		cout << '\n';
+	}
+}

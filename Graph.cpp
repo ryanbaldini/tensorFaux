@@ -1,10 +1,31 @@
 #include <vector>
 #include <string>
+#include <iostream>
 //#include <iostream>
 #include "Graph.h"
 //#include "loss.h"
 
 using namespace std;
+
+Graph::Graph(): rng(0, 0.001, 0) {}
+
+Graph::Graph(unsigned long long seed): rng(0, 0.001, seed) {}
+
+void Graph::printParameters(string name)
+{
+	int nNodes = nodes.size();
+	for(int i=0; i<nNodes; i++)
+	{
+		if(nodes[i]->name == name)
+		{
+			cout << " - - - - - " << '\n';
+			cout << name + " parameters:" << '\n';
+			nodes[i]->printParameters();
+			cout << " - - - - - " << '\n';
+			return;
+		}
+	}
+}
 
 void Graph::setLoss(Loss loss_)
 {
@@ -75,6 +96,20 @@ void Graph::backwardSweep(vector< double* > Y)
 
 void Graph::addInputNode(string name, vector<int> dim)
 {
+	//check for errors
+	int nNodes = nodes.size();
+	try
+	{
+		for(int i=0; i<nNodes; i++)
+		{
+			if(nodes[i]->name == name) throw "The name '" + name + "' is already taken.";
+		}
+	}
+	catch(string exception)
+	{
+		cerr << "ERROR: " << exception << '\n';
+	}
+		
 	Node* newNode = new InputNode(name, dim);
 	nodes.push_back(newNode);
 	//no parents to deal with
@@ -82,9 +117,23 @@ void Graph::addInputNode(string name, vector<int> dim)
 
 void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activation activate)
 {
+	//check for errors
+	int nNodes = nodes.size();
+	try
+	{
+		for(int i=0; i<nNodes; i++)
+		{
+			if(nodes[i]->name == name) throw "The name '" + name + "' is already taken.";
+		}
+		if(nNeurons <= 0) throw string("nNeurons must be positive integer");
+	}
+	catch(string exception)
+	{
+		cerr << "ERROR: " << exception << '\n';
+	}
+	
 	//define parent
 	//probably make this into a function
-	int nNodes = nodes.size();
 	Node* parentNode;
 	for(int i=0; i<nNodes; i++)
 	{
@@ -96,7 +145,7 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activ
 	}
 	
 	//add to nodes
-	Node* newNode = new DenseNode(name, parentNode, nNeurons, activate);
+	Node* newNode = new DenseNode(name, parentNode, nNeurons, activate, rng);
 	nodes.push_back(newNode);
 	
 	//add to parents' children

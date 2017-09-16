@@ -6,23 +6,20 @@
 using namespace std;
 
 int main()
-{
-	// cout << relu.activate(1.5) << '\n';
-	// cout << relu.activate(-1.5) << '\n';
-	// activation* pAct = &act;
-	// cout << (*pAct)(1.5) << '\n';
-	// cout << (*pAct)(-1.5) << '\n';
-	
-	Graph DNN;	
+{	
+	int seed = 1;
+	Graph DNN(seed);	
 	vector<int> dimInt;
-	int n=10;
+	int n=3;
 	dimInt.push_back(n);
 	
 	DNN.addInputNode("input1", dimInt);
-	DNN.addInputNode("input2", dimInt);
-	DNN.addDenseNode("dense1", "input1", 100, Activations::relu);
-	DNN.addDenseNode("dense2", "dense1", 50, Activations::relu);
-	DNN.addDenseNode("dense3", "dense2", 1, Activations::sigmoid);
+	// DNN.addInputNode("input1", dimInt);
+	DNN.addDenseNode("dense1", "input1", 1, Activations::sigmoid);
+	// DNN.addDenseNode("dense2", "dense1", 1, Activations::sigmoid);
+
+	DNN.printParameters("dense1");
+	// DNN.printParameters("dense2");
 	
 	DNN.setLoss(Losses::binaryEntropy);
 	
@@ -41,22 +38,22 @@ int main()
 	// cout << DNN.nodes[4]->name << '\n';
 	// cout << DNN.nodes[4]->values[0] << '\n';
 	// cout << DNN.nodes[4]->parents[0]->name << '\n';
-	cout << DNN.nodes[4]->values[0] << '\n';
+	// cout << DNN.nodes[4]->values[0] << '\n';
 
 	vector< double* > input;
 	double* input1 = new double[n];
-	double* input2 = new double[n];
-	for(int i=0; i<n; i++) 
+	// double* input2 = new double[n];
+	for(int i=0; i<n; i++)
 	{
 		input1[i] = i;
-		input2[i] = i*2;
-	}
+		// input2[i] = i*2;
+}
 	input.push_back(input1);
-	input.push_back(input2);
+	// input.push_back(input2);
 	
 	DNN.forwardSweep(input);
 	
-	cout << DNN.nodes[4]->values[0] << '\n';
+	cout << DNN.nodes[1]->values[0] << '\n';
 	
 	// DNN.addInputNode(name="input1", dim = (100,100));	//adds an Input node called input1
 	// DNN.addInputNode(name="input2", dim = 1);			//adds an Input node called input1
