@@ -20,9 +20,11 @@ int main()
 	
 	DNN.addInputNode("input1", dimInt);
 	DNN.addInputNode("input2", dimInt);
-	DNN.addDenseNode("dense1", "input1", 100, activations::relu);
-	DNN.addDenseNode("dense2", "dense1", 50, activations::relu);
-	DNN.addDenseNode("dense3", "dense2", 1, activations::sigmoid);
+	DNN.addDenseNode("dense1", "input1", 100, Activations::relu);
+	DNN.addDenseNode("dense2", "dense1", 50, Activations::relu);
+	DNN.addDenseNode("dense3", "dense2", 1, Activations::sigmoid);
+	
+	DNN.setLoss(Losses::binaryEntropy);
 	
 	// cout << DNN.nodes[0]->name << '\n';
 	// cout << DNN.nodes[0]->values[0] << '\n';
@@ -52,7 +54,7 @@ int main()
 	input.push_back(input1);
 	input.push_back(input2);
 	
-	DNN.compute(input);
+	DNN.forwardSweep(input);
 	
 	cout << DNN.nodes[4]->values[0] << '\n';
 	

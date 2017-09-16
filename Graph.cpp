@@ -2,12 +2,17 @@
 #include <string>
 //#include <iostream>
 #include "Graph.h"
+//#include "loss.h"
 
 using namespace std;
 
+void Graph::setLoss(Loss loss_)
+{
+	loss = loss_;
+}
+
 //data is fed in as a vector of pointers to doubles
-//this is void; the final results of computation are stored in the terminal nodes
-void Graph::compute(vector< double* > X)
+void Graph::forwardSweep(vector< double* > X)
 {
 	//reset all nodes to "not updated this round"
 	int nNodes = nodes.size();
@@ -15,7 +20,7 @@ void Graph::compute(vector< double* > X)
 	
 	//set input nodes to equal X
 	//in order of creation
-	//once set, we can "compute" them, which really does nothing except begin the recursive evaluation of the whole graph
+	//then compute them, starting the forward sweep
 	int j=0;
 	for(int i=0; i<nNodes; i++)
 	{
@@ -28,21 +33,45 @@ void Graph::compute(vector< double* > X)
 	}
 }
 
-vector< double* > Graph::computeAndReturn(vector< double* > X)
+void Graph::backwardSweep(vector< double* > Y)
 {
-	compute(X);
-	//return pointers to values of terminal nodes
+	//reset all nodes to "gradient not updated this round"
 	int nNodes = nodes.size();
-	vector< double* > output;
+	for(int i=0; i<nNodes; i++) nodes[i]->gradientUpdatedThisRound = false;
+	
+	//get the losses on output nodes
+	//in order of creation
+	//then compute gradients, starting the backward sweep
+	int j=0;
 	for(int i=0; i<nNodes; i++)
 	{
-		if((nodes[i]->children).size() == 0)	//no children -> terminal
+		if((nodes[i]->children).size() == 0)	//this implies it has no children, hence is an output node
 		{
-			output.push_back(nodes[i]->values);
+			//get gradient on values
+			int dim = multVec(nodes[i]->dim);
+			for(int k=0; k<dim; k++) (nodes[i]->gradient)[k] = loss.gradient(Y[j][k], (nodes[i]->values)[k]);	
+			//start the chain
+			nodes[i]->computeGradient();
+			j++;
 		}
 	}
-	return output;
 }
+
+// vector< double* > Graph::computeAndReturn(vector< double* > X)
+// {
+// 	compute(X);
+// 	//return pointers to values of terminal nodes
+// 	int nNodes = nodes.size();
+// 	vector< double* > output;
+// 	for(int i=0; i<nNodes; i++)
+// 	{
+// 		if((nodes[i]->children).size() == 0)	//no children -> terminal
+// 		{
+// 			output.push_back(nodes[i]->values);
+// 		}
+// 	}
+// 	return output;
+// }
 
 void Graph::addInputNode(string name, vector<int> dim)
 {
@@ -51,7 +80,7 @@ void Graph::addInputNode(string name, vector<int> dim)
 	//no parents to deal with
 }
 
-void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, activation activate)
+void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activation activate)
 {
 	//define parent
 	//probably make this into a function

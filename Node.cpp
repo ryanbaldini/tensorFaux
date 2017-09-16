@@ -7,8 +7,48 @@
 
 using namespace std;
 
-void Node::computeValues() { }
-void Node::computeGradient() { }
+//empty virtual function bases
+void Node::computeMyValues() {return;}
+void Node::computeGradOnParameters() {return;}
+void Node::computeGradOnParents() {return;}
+
+void Node::computeValues() 
+{
+	//first, check that parents' gradients have been computed
+	int nParents = parents.size();
+	for(int i=0; i<nParents; i++)
+	{
+		if(!(parents[i]->valuesUpdatedThisRound)) return;
+	}
+	
+	computeMyValues();
+	
+	valuesUpdatedThisRound = true;
+	
+	//go to children
+	int nChildren = children.size();
+	for(int i=0; i<nChildren; i++) (children[i])->computeValues();	
+}
+
+void Node::computeGradient() 
+{ 
+	//first, check that childrens' gradients have been computed
+	int nChildren = children.size();
+	for(int i=0; i<nChildren; i++)
+	{
+		if(!(children[i]->gradientUpdatedThisRound)) return;
+	}
+	
+	computeGradOnParameters();
+	
+	computeGradOnParents();
+	
+	gradientUpdatedThisRound = true;
+	
+	//go to parents
+	int nParents = parents.size();
+	for(int i=0; i<nParents; i++) (parents[i])->computeGradient();
+}
 
 InputNode::InputNode(string name_, vector<int> dim_)
 {
@@ -21,21 +61,36 @@ InputNode::InputNode(string name_, vector<int> dim_)
 	gradientUpdatedThisRound = false;
 }
 	
-void InputNode::computeValues()
+// void InputNode::computeValues()
+// {
+// 	valuesUpdatedThisRound = true;
+//
+// 	//compute children
+// 	int nChildren = children.size();
+// 	for(int i=0; i<nChildren; i++) children[i]->computeValues();
+// }
+
+void InputNode::computeMyValues()
 {
-	valuesUpdatedThisRound = true;
-	
-	//compute children
-	int nChildren = children.size();
-	for(int i=0; i<nChildren; i++) children[i]->computeValues();
-}
-	
-void InputNode::computeGradient()
-{
-	gradientUpdatedThisRound = true;
+	return;
 }
 
-DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, activation activate_)
+void InputNode::computeGradOnParameters()
+{
+	return;
+}
+
+void InputNode::computeGradOnParents()
+{
+	return;
+}
+
+// void InputNode::computeGradient()
+// {
+// 	gradientUpdatedThisRound = true;
+// }
+
+DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_)
 {
 	name = name_; 
 	dim.push_back(nNeurons);
@@ -68,15 +123,10 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, activation ac
 	valuesUpdatedThisRound = false;
 	gradientUpdatedThisRound = false;
 }
-	
-void DenseNode::computeValues()
-{
-	//first, check that parent has been computed
-	//maybe not necessary, since dense layers have only one parent and can only be called after the parent!
-	// Node* parent = parents[0];	//must only be one parent
-	// if(!(parent->valuesUpdatedThisRound)) return;
-	Node* parent = parents[0];
 
+void DenseNode::computeMyValues()
+{
+	Node* parent = parents[0];
 	int dimIn = multVec(parent->dim);
 	int dimOut = dim[0];	//only one
 	
@@ -90,29 +140,44 @@ void DenseNode::computeValues()
 		}
 		values[i] = activate.activate(nonActivatedValues[i]);
 	}
-	
-	valuesUpdatedThisRound = true;
-	
-	//compute children
-	int nChildren = children.size();
-	for(int i=0; i<nChildren; i++) children[i]->computeValues();
 }
 	
-void DenseNode::computeGradient()
-{
-	//first, check that childrens' gradients have been computed
-	int nChildren = children.size();
-	for(int i=0; i<nChildren; i++)
-	{
-		if(!(children[i]->gradientUpdatedThisRound)) return;
-	}
+// void DenseNode::computeValues()
+// {
+// 	//first, check that parent has been computed
+// 	//maybe not necessary, since dense layers have only one parent and can only be called after the parent!
+// 	// Node* parent = parents[0];	//must only be one parent
+// 	// if(!(parent->valuesUpdatedThisRound)) return;
+// 	Node* parent = parents[0];
+//
+// 	int dimIn = multVec(parent->dim);
+// 	int dimOut = dim[0];	//only one
+//
+// 	//do matrix add, multiply, and activation
+// 	for(int i=0; i<dimOut; i++)
+// 	{
+// 		nonActivatedValues[i] = biases[i];
+// 		for(int j=0; j<dimIn; j++)
+// 		{
+// 			nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
+// 		}
+// 		values[i] = activate.activate(nonActivatedValues[i]);
+// 	}
+//
+// 	valuesUpdatedThisRound = true;
+//
+// 	//compute children
+// 	int nChildren = children.size();
+// 	for(int i=0; i<nChildren; i++) children[i]->computeValues();
+// }
 
-	
+void DenseNode::computeGradOnParameters()
+{
 	//update gradient on non-activated values
 	int dimOut = dim[0];
 	for(int i=0; i<dimOut; i++)
 	{
-		gradNonActivatedValues[i] = activate.gradient(nonActivatedValues[i]);
+		gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
 	}
 	
 	//gradient on node's parameters depends on its parents' values
@@ -121,29 +186,80 @@ void DenseNode::computeGradient()
 	int dimIn = multVec(parent->dim);
 	for(int i=0; i<dimOut; i++)
 	{
-		double tmp = gradient[i]*gradNonActivatedValues[i];
+		//double tmp = gradient[i]*gradNonActivatedValues[i];
 		//consider checking if tmp is zero: might save time if we initialize these to 0 upfront? esp for those multiplications for the weights
-		biases_gradient = tmp;
+		biases_gradient[i] = gradNonActivatedValues[i];
 		for(int j=0; j<dimIn; j++)
 		{
-			weights_gradient[i][j] = tmp*(parent->values[j])
+			weights_gradient[i][j] = gradNonActivatedValues[i]*(parent->values[j]);
 		}
 	}
+}
+
+void DenseNode::computeGradOnParents()
+{
+	int dimOut = dim[0];	
 	
-	//now update gradient on parents' values
+	//dense layer has only one parent
+	Node* parent = parents[0];
+	int dimIn = multVec(parent->dim);
 	//remember, parent's gradient might have already been incremented by another child. so only increment here.
 	for(int i=0; i<dimIn; i++)
 	{
 		for(int j=0; j<dimOut; j++)
 		{
-			parent->gradient[i] += gradient[j]*gradNonActivatedValues[j]*weights[j,i];	//bad stride on weights, but hard to fix that without hurting something else
+			parent->gradient[i] += gradNonActivatedValues[j]*weights[j][i];	//bad stride on weights, but hard to fix that without hurting something else
 		}
-	}
-	
-	gradientUpdatedThisRound = true;
-	
-	//compute gradients of parents
-	int nParents = parents.size();
-	for(int i=0; i<nParents; i++) (parents[i])->computeGradient();
-	
+	}	
 }
+
+// void DenseNode::computeGradient()
+// {
+// 	//first, check that childrens' gradients have been computed
+// 	int nChildren = children.size();
+// 	for(int i=0; i<nChildren; i++)
+// 	{
+// 		if(!(children[i]->gradientUpdatedThisRound)) return;
+// 	}
+//
+//
+// 	//update gradient on non-activated values
+// 	int dimOut = dim[0];
+// 	for(int i=0; i<dimOut; i++)
+// 	{
+// 		gradNonActivatedValues[i] = activate.gradient(nonActivatedValues[i]);
+// 	}
+//
+// 	//gradient on node's parameters depends on its parents' values
+// 	//dense layer has only one parent
+// 	Node* parent = parents[0];
+// 	int dimIn = multVec(parent->dim);
+// 	for(int i=0; i<dimOut; i++)
+// 	{
+// 		double tmp = gradient[i]*gradNonActivatedValues[i];
+// 		//consider checking if tmp is zero: might save time if we initialize these to 0 upfront? esp for those multiplications for the weights
+// 		biases_gradient = tmp;
+// 		for(int j=0; j<dimIn; j++)
+// 		{
+// 			weights_gradient[i][j] = tmp*(parent->values[j])
+// 		}
+// 	}
+//
+// 	//now update gradient on parents' values
+// 	//remember, parent's gradient might have already been incremented by another child. so only increment here.
+// 	for(int i=0; i<dimIn; i++)
+// 	{
+// 		for(int j=0; j<dimOut; j++)
+// 		{
+// 			parent->gradient[i] += gradient[j]*gradNonActivatedValues[j]*weights[j,i];	//bad stride on weights, but hard to fix that without hurting something else
+// 		}
+// 	}
+//
+// 	gradientUpdatedThisRound = true;
+//
+// 	//compute gradients of parents
+// 	int nParents = parents.size();
+// 	for(int i=0; i<nParents; i++) (parents[i])->computeGradient();
+//
+// }
+

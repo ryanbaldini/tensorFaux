@@ -16,20 +16,27 @@ struct Node
 	double* gradient;			//gradient on the values
 	vector< Node* > parents;
 	vector< Node* > children;
-	activation activate;
+	Activation activate;
 	bool valuesUpdatedThisRound;
 	bool gradientUpdatedThisRound;
 	
 	//these virtual functions are defined in each type of node
-	virtual void computeValues();	//no argument: get input from parents
-	virtual void computeGradient();	//no argument: get input from children
+	void computeValues();
+	virtual void computeMyValues();
+	
+	void computeGradient();
+	virtual void computeGradOnParameters();
+	virtual void computeGradOnParents();
 };
 
 struct InputNode: Node
 {	
 	InputNode(string name_, vector<int> dim_);	
-	virtual void computeValues();	
-	virtual void computeGradient();
+	
+	virtual void computeMyValues();	
+	
+	virtual void computeGradOnParameters();
+	virtual void computeGradOnParents();
 };
 
 struct DenseNode: Node
@@ -40,9 +47,12 @@ struct DenseNode: Node
 	double** weights;
 	double* biases_gradient;
 	double** weights_gradient;
-	DenseNode(string name_, Node* parentNode, int nNeurons, activation activate_);
-	virtual void computeValues();
-	virtual void computeGradient();
+	DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_);
+	
+	virtual void computeMyValues();
+	
+	virtual void computeGradOnParameters();
+	virtual void computeGradOnParents();
 };
 
 #endif
