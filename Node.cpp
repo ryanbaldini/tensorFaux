@@ -7,8 +7,8 @@ using namespace std;
 
 //empty virtual function bases
 void Node::computeMyValues() {return;}
-void Node::computeGradOnParameters() {return;}
-void Node::computeGradOnParents() {return;}
+void Node::incrementGradOnParameters() {return;}
+void Node::incrementGradOnParents() {return;}
 void Node::printParameters() {return;}
 
 void Node::computeValues() 
@@ -29,7 +29,7 @@ void Node::computeValues()
 	for(int i=0; i<nChildren; i++) (children[i])->computeValues();	
 }
 
-void Node::computeGradient() 
+void Node::incrementGradient() 
 { 
 	//first, check that childrens' gradients have been computed
 	int nChildren = children.size();
@@ -38,15 +38,15 @@ void Node::computeGradient()
 		if(!(children[i]->gradientUpdatedThisRound)) return;
 	}
 	
-	computeGradOnParameters();
+	incrementGradOnParameters();
 	
-	computeGradOnParents();
+	incrementGradOnParents();
 	
 	gradientUpdatedThisRound = true;
 	
 	//go to parents
 	int nParents = parents.size();
-	for(int i=0; i<nParents; i++) (parents[i])->computeGradient();
+	for(int i=0; i<nParents; i++) (parents[i])->incrementGradient();
 }
 
 InputNode::InputNode(string name_, vector<int> dim_)
@@ -64,11 +64,11 @@ void InputNode::computeMyValues()
 {
 	return;
 }
-void InputNode::computeGradOnParameters()
+void InputNode::incrementGradOnParameters()
 {
 	return;
 }
-void InputNode::computeGradOnParents()
+void InputNode::incrementGradOnParents()
 {
 	return;
 }
@@ -84,21 +84,26 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	dim.push_back(nNeurons);
 	parents.push_back(parentNode);
 	activate = activate_;
+	
 	//values and gradient
-	values = new double[dim[0]];
-	gradient = new double[dim[0]];
-	nonActivatedValues = new double[dim[0]];
-	gradNonActivatedValues = new double[dim[0]];
+	values = new double[nNeurons];
+	gradient = new double[nNeurons];
+	nonActivatedValues = new double[nNeurons];
+	gradNonActivatedValues = new double[nNeurons];
 	//parameters and gradient
-	biases = new double[dim[0]];
-	biases_gradient = new double[dim[0]];
 	int dimIn = multVec(parentNode->dim);
-	weights = new double*[dim[0]];
-	weights_gradient = new double*[dim[0]];
-	for(int i=0; i<dim[0]; i++)
+	parameters = new double[nNeurons + nNeurons*dimIn];		//size of weights + biases
+	parameterGradient = new double[nNeurons + nNeurons*dimIn];	//size of weights + biases
+	
+	//set the helper pointers to the right location
+	biases = parameters;	//biases start at 0
+	biases_gradient = parameterGradient;
+	weights = new double*[nNeurons];		//each will point to the appropriate location 
+	weights_gradient = new double*[nNeurons];
+	for(int i=0; i<nNeurons; i++)
 	{
-		weights[i] = new double[dimIn];
-		weights_gradient[i] = new double[dimIn];
+		weights[i] = parameters + nNeurons + i*dimIn;
+		weights_gradient[i] = parameterGradient + nNeurons + i*dimIn;
 	}
 	
 	//initialize parameters at random
@@ -110,9 +115,6 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 			weights[i][j] = rng.dev();
 		}
 	}
-	
-	valuesUpdatedThisRound = false;
-	gradientUpdatedThisRound = false;
 }
 
 void DenseNode::computeMyValues()
@@ -133,7 +135,7 @@ void DenseNode::computeMyValues()
 	}
 }
 
-void DenseNode::computeGradOnParameters()
+void DenseNode::incrementGradOnParameters()
 {
 	//update gradient on non-activated values
 	int dimOut = dim[0];
@@ -150,15 +152,15 @@ void DenseNode::computeGradOnParameters()
 	{
 		//double tmp = gradient[i]*gradNonActivatedValues[i];
 		//consider checking if tmp is zero: might save time if we initialize these to 0 upfront? esp for those multiplications for the weights
-		biases_gradient[i] = gradNonActivatedValues[i];
+		biases_gradient[i] += gradNonActivatedValues[i];
 		for(int j=0; j<dimIn; j++)
 		{
-			weights_gradient[i][j] = gradNonActivatedValues[i]*(parent->values[j]);
+			weights_gradient[i][j] += gradNonActivatedValues[i]*(parent->values[j]);
 		}
 	}
 }
 
-void DenseNode::computeGradOnParents()
+void DenseNode::incrementGradOnParents()
 {
 	int dimOut = dim[0];	
 	

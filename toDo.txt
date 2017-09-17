@@ -1,5 +1,1 @@
-- Test backprop
-- Add optimizers
-- Add functions for training on data
-- Add error checking on forward propagation (inputs of right dimension?)
-- Add error checking on back propagation (outputs of right dimension?) 
+- Test trainBatch

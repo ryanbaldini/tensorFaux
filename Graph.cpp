@@ -30,6 +30,13 @@ void Graph::setLoss(Loss loss_)
 	loss = loss_;
 }
 
+void Graph::setOptimizer(Optimizer optimizer_)
+{
+	optimizer = optimizer_;
+	// optimizer.nodes = nodes;
+	optimizer.compile(nodes);
+}
+
 //data is fed in as a vector of pointers to doubles
 void Graph::forwardSweep(vector< double* > X)
 {
@@ -55,12 +62,18 @@ void Graph::forwardSweep(vector< double* > X)
 void Graph::backwardSweep(vector< double* > Y)
 {
 	//reset all nodes to "gradient not updated this round"
+	//and set value gradients to 0 (but not parameter gradients)
 	int nNodes = nodes.size();
-	for(int i=0; i<nNodes; i++) nodes[i]->gradientUpdatedThisRound = false;
+	for(int i=0; i<nNodes; i++)
+	{
+		nodes[i]->gradientUpdatedThisRound = false;
+		int dim = multVec(nodes[i]->dim);
+		for(int j=0; j<dim; j++) (nodes[i]->gradient)[j] = 0.0;
+	}
 	
 	//get the losses on output nodes
 	//in order of creation
-	//then compute gradients, starting the backward sweep
+	//then backprop gradients
 	int j=0;
 	for(int i=0; i<nNodes; i++)
 	{
@@ -70,10 +83,42 @@ void Graph::backwardSweep(vector< double* > Y)
 			int dim = multVec(nodes[i]->dim);
 			for(int k=0; k<dim; k++) (nodes[i]->gradient)[k] = loss.gradient(Y[j][k], (nodes[i]->values)[k]);	
 			//start the chain
-			nodes[i]->computeGradient();
+			nodes[i]->incrementGradient();
 			j++;
 		}
 	}
+}
+
+void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > > Y)
+{
+	int nSamples = X.size();
+	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }	
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+	
+	//set parameter gradients to 0
+	int nNodes = nodes.size();
+	for(int i=0; i<nNodes; i++)
+	{
+		int dim = multVec(nodes[i]->dim);
+		for(int j=0; j<dim; j++) (nodes[i]->parameterGradient)[j] = 0.0;
+	}
+	
+	//process data
+	for(int i=0; i<nSamples; i++)
+	{
+		forwardSweep(X[i]);
+		backwardSweep(Y[i]);	//increments parameter gradients each time
+	}
+	
+	//take mean of incremented gradients to get the overall gradient
+	for(int i=0; i<nNodes; i++)
+	{
+		int dim = multVec(nodes[i]->dim);
+		for(int j=0; j<dim; j++) (nodes[i]->parameterGradient)[j] = (nodes[i]->parameterGradient)[j]/nSamples;
+	}
+	
+	//update parameters
+	optimizer.updateParameters();
 }
 
 // vector< double* > Graph::computeAndReturn(vector< double* > X)
@@ -103,10 +148,7 @@ void Graph::addInputNode(string name, vector<int> dim)
 			if(nodes[i]->name == name) throw "The name '" + name + "' is already taken.";
 		}
 	}
-	catch(string exception)
-	{
-		cerr << "ERROR: " << exception << '\n';
-	}
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
 		
 	Node* newNode = new InputNode(name, dim);
 	nodes.push_back(newNode);
@@ -125,10 +167,7 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activ
 		}
 		if(nNeurons <= 0) throw string("nNeurons must be positive integer");
 	}
-	catch(string exception)
-	{
-		cerr << "ERROR: " << exception << '\n';
-	}
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
 	
 	//define parent
 	//probably make this into a function

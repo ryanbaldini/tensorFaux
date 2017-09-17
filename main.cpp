@@ -17,6 +17,7 @@ int main()
 	DNN.addDenseNode("dense1", "input1", 3, Activations::relu);
 	DNN.addDenseNode("dense2", "dense1", 1, Activations::sigmoid);
 	DNN.setLoss(Losses::binaryEntropy);
+	DNN.setOptimizer(Optimizers::SGD(0.0001));
 
 	DNN.printParameters("dense2");
 	// DNN.printParameters("dense2");
