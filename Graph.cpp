@@ -1,9 +1,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
-//#include <iostream>
 #include "Graph.h"
-//#include "loss.h"
 
 using namespace std;
 

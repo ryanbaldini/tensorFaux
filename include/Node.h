@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <string>
-#include "activations.h"
 #include "functions.h"
+#include "activations.h"
 #include "randomNumbers.h"
 
 using namespace std;

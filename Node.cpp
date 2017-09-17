@@ -1,9 +1,7 @@
 #include <vector>
 #include <string>
-#include "Node.h"
 #include <iostream>
-// #include "functions.cpp"
-//#include "activations.cpp"
+#include "Node.h"
 
 using namespace std;
 
@@ -62,15 +60,6 @@ InputNode::InputNode(string name_, vector<int> dim_)
 	gradientUpdatedThisRound = false;
 }
 	
-// void InputNode::computeValues()
-// {
-// 	valuesUpdatedThisRound = true;
-//
-// 	//compute children
-// 	int nChildren = children.size();
-// 	for(int i=0; i<nChildren; i++) children[i]->computeValues();
-// }
-
 void InputNode::computeMyValues()
 {
 	return;
@@ -88,10 +77,6 @@ void InputNode::printParameters()
 	return;
 }
 
-// void InputNode::computeGradient()
-// {
-// 	gradientUpdatedThisRound = true;
-// }
 
 DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation activate_, Normaldev& rng)
 {
@@ -104,13 +89,6 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	gradient = new double[dim[0]];
 	nonActivatedValues = new double[dim[0]];
 	gradNonActivatedValues = new double[dim[0]];
-	// for(int i=0; i<dim[0]; i++)
-	// {
-	// 	values[i] = 0.0;
-	// 	gradient[i] = 0.0;
-	// 	nonActivatedValues[i] = 0.0;
-	// 	gradNonActivatedValues[i] = 0.0;
-	// }
 	//parameters and gradient
 	biases = new double[dim[0]];
 	biases_gradient = new double[dim[0]];
@@ -154,35 +132,6 @@ void DenseNode::computeMyValues()
 		values[i] = activate.activate(nonActivatedValues[i]);
 	}
 }
-	
-// void DenseNode::computeValues()
-// {
-// 	//first, check that parent has been computed
-// 	//maybe not necessary, since dense layers have only one parent and can only be called after the parent!
-// 	// Node* parent = parents[0];	//must only be one parent
-// 	// if(!(parent->valuesUpdatedThisRound)) return;
-// 	Node* parent = parents[0];
-//
-// 	int dimIn = multVec(parent->dim);
-// 	int dimOut = dim[0];	//only one
-//
-// 	//do matrix add, multiply, and activation
-// 	for(int i=0; i<dimOut; i++)
-// 	{
-// 		nonActivatedValues[i] = biases[i];
-// 		for(int j=0; j<dimIn; j++)
-// 		{
-// 			nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
-// 		}
-// 		values[i] = activate.activate(nonActivatedValues[i]);
-// 	}
-//
-// 	valuesUpdatedThisRound = true;
-//
-// 	//compute children
-// 	int nChildren = children.size();
-// 	for(int i=0; i<nChildren; i++) children[i]->computeValues();
-// }
 
 void DenseNode::computeGradOnParameters()
 {
