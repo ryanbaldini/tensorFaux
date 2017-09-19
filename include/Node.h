@@ -13,8 +13,10 @@ struct Node
 {
 	string name;
 	vector<int> dim;
+	int nValues;
 	double* values;				//computed values of the node; altered on forward pass
 	double* gradient;			//gradient on the values; altered on backward pass
+	int nParameters;
 	double* parameters;
 	double* parameterGradient;
 	vector< Node* > parents;

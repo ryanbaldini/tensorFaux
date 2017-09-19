@@ -30,16 +30,18 @@ void Graph::setLoss(Loss loss_)
 	loss = loss_;
 }
 
-void Graph::setOptimizer(Optimizer optimizer_)
+void Graph::setOptimizer(Optimizer& optimizer_)
 {
-	optimizer = optimizer_;
-	// optimizer.nodes = nodes;
-	optimizer.compile(nodes);
+	optimizer = &optimizer_;
+	optimizer->compile(nodes);
 }
+
 
 //data is fed in as a vector of pointers to doubles
 void Graph::forwardSweep(vector< double* > X)
 {
+	//check correct number of elements
+	
 	//reset all nodes to "not updated this round"
 	int nNodes = nodes.size();
 	for(int i=0; i<nNodes; i++) nodes[i]->valuesUpdatedThisRound = false;
@@ -61,13 +63,15 @@ void Graph::forwardSweep(vector< double* > X)
 
 void Graph::backwardSweep(vector< double* > Y)
 {
+	//check correct number of elements
+	
 	//reset all nodes to "gradient not updated this round"
 	//and set value gradients to 0 (but not parameter gradients)
 	int nNodes = nodes.size();
 	for(int i=0; i<nNodes; i++)
 	{
 		nodes[i]->gradientUpdatedThisRound = false;
-		int dim = multVec(nodes[i]->dim);
+		int dim = nodes[i]->nValues;
 		for(int j=0; j<dim; j++) (nodes[i]->gradient)[j] = 0.0;
 	}
 	
@@ -80,7 +84,7 @@ void Graph::backwardSweep(vector< double* > Y)
 		if((nodes[i]->children).size() == 0)	//this implies it has no children, hence is an output node
 		{
 			//get gradient on values
-			int dim = multVec(nodes[i]->dim);
+			int dim = nodes[i]->nValues;
 			for(int k=0; k<dim; k++) (nodes[i]->gradient)[k] = loss.gradient(Y[j][k], (nodes[i]->values)[k]);	
 			//start the chain
 			nodes[i]->incrementGradient();
@@ -89,18 +93,48 @@ void Graph::backwardSweep(vector< double* > Y)
 	}
 }
 
+double Graph::getError(vector< vector< double* > > X, vector< vector< double* > > Y)
+{
+	int nSamples = X.size();
+	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+		
+	double error = 0.0;
+	
+	int nNodes = nodes.size();
+	vector<int> whichNodesAreTerminal;
+	for(int i=0; i<nNodes; i++)
+	{
+		if((nodes[i]->children).size() == 0) whichNodesAreTerminal.push_back(i);
+	}
+	int nTerminalNodes = whichNodesAreTerminal.size();
+	for(int i=0; i<nSamples; i++)
+	{
+		forwardSweep(X[i]);
+		for(int j=0; j<nTerminalNodes; j++)
+		{
+			int dim = nodes[whichNodesAreTerminal[j]]->nValues;
+			for(int k=0; k<dim; k++) error += loss.loss(Y[i][j][k], nodes[whichNodesAreTerminal[j]]->values[k]);
+		}
+	}
+	error = error/nSamples;
+	return error;
+}
+	
+
+
 void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > > Y)
 {
 	int nSamples = X.size();
-	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }	
-	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
-	
+		
 	//set parameter gradients to 0
 	int nNodes = nodes.size();
 	for(int i=0; i<nNodes; i++)
 	{
-		int dim = multVec(nodes[i]->dim);
-		for(int j=0; j<dim; j++) (nodes[i]->parameterGradient)[j] = 0.0;
+		int nParameters = nodes[i]->nParameters;
+		for(int j=0; j<nParameters; j++){ 
+			(nodes[i]->parameterGradient)[j] = 0.0;
+		}
 	}
 	
 	//process data
@@ -113,12 +147,70 @@ void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > 
 	//take mean of incremented gradients to get the overall gradient
 	for(int i=0; i<nNodes; i++)
 	{
-		int dim = multVec(nodes[i]->dim);
-		for(int j=0; j<dim; j++) (nodes[i]->parameterGradient)[j] = (nodes[i]->parameterGradient)[j]/nSamples;
+		int nParameters = nodes[i]->nParameters;
+		for(int j=0; j<nParameters; j++)
+		{
+			(nodes[i]->parameterGradient)[j] = (nodes[i]->parameterGradient)[j]/nSamples;
+		}
 	}
 	
 	//update parameters
-	optimizer.updateParameters();
+	optimizer->updateParameters();
+}
+
+void Graph::train(vector< vector< double* > > X, vector< vector< double* > > Y, int nEpochs, int batchSize, bool verbose)
+{
+	int nSamples = X.size();
+	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }	
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+
+	//create an order array, which will be shuffled for each epoch
+	vector<int> order(nSamples);
+	for(int i=0; i++; i<nSamples) order[i] = i;
+	
+	for(int i=0; i<nEpochs; i++)
+	{
+		//shuffle order in which they are processed
+		rng.shuffle(order);
+		
+		int place = 0;
+		//first do as many complete batches as possible
+		{
+			int nCompleteBatches = nSamples/batchSize; //rounds down
+			if(nCompleteBatches > 0)
+			{
+				vector< vector< double* > > XBatch(batchSize);
+				vector< vector< double* > > YBatch(batchSize);
+				for(int j=0; j<nCompleteBatches; j++)
+				{
+					for(int k=0; k<batchSize; k++)
+					{
+						XBatch[k] = X[order[place]];
+						YBatch[k] = Y[order[place]];
+						place++;
+					}
+					trainBatch(XBatch, YBatch);
+				}
+			}	
+		}
+		//now do the remainder
+		int nLeft = nSamples % batchSize;
+		if(nLeft > 0)
+		{
+			vector< vector< double* > > XBatch(nLeft);
+			vector< vector< double* > > YBatch(nLeft);
+			for(int j=0; j<nLeft; j++)
+			{
+				XBatch[j] = X[order[place]];
+				YBatch[j] = Y[order[place]];
+				place++;
+			}
+			trainBatch(XBatch, YBatch);
+		}
+		
+		//report training error
+		if(verbose) cout << "Training error, epoch " << i+1 << ": " << getError(X, Y) << '\n';
+	}
 }
 
 // vector< double* > Graph::computeAndReturn(vector< double* > X)

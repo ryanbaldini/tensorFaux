@@ -1,4 +1,6 @@
-#include "functions.h"
+#include <vector>
+
+using namespace std;
 
 int multVec(vector<int> x)
 {

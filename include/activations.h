@@ -6,6 +6,8 @@
 
 using namespace std;
 
+//remember: can define stuff within a class separately in each translation unit (cpp)
+//implicitly inline, so good for small functions
 struct Activation
 {
 	string type;
@@ -27,29 +29,21 @@ struct Activation
 
 namespace Activations
 {
-	const Activation none(
-		"none",
-		[](double x) { return x; },
-		[](double x) { return 1.0; }
-	);
-
-	const Activation relu(
-		"relu",
-		[](double x) { return (x>0.0) ? x : 0.0; },
-		[](double x) { return (x>0.0) ? 1.0 : 0.0; }
-	);
-
-	const Activation sigmoid(
-		"sigmoid",
-		[](double x) {
-			return 1.0/(1.0 + exp(-x));
-		},
-		[](double x) {
-			double tmp1 = exp(-x);
-			double tmp2 = (1.0 + tmp1);
-			return tmp1/(tmp2*tmp2);
-		}
-	);
+	extern const Activation none;
+	extern const Activation relu;
+	extern const Activation leakyRelu;
+	extern const Activation sigmoid;
+	extern const Activation tanh;
 }
+
+//extern const means that it's a constant that is defined in another file
+//in this case, it's defined in activations.cpp
+//(the fact that this works implies that extern const variables don't require immediate definition?)
+//why do it this way?
+//previously, I had just a activations.h file with everything defined all in one go. No externs. It worked.
+//multiple .cpp files called this header, meaning each would define it.
+//but since const variables have only internal linkage, this is okay: each would only look at its own copy
+//but it's redundant: that code is translated multiple times
+//this way works, without redundancy 
 
 #endif

@@ -1,6 +1,10 @@
 #ifndef RANDOM
 #define RANDOM
 
+#include <vector>
+
+using namespace std;
+
 struct Ranq1
 {
 	unsigned long long v;
@@ -21,5 +25,12 @@ struct Normaldev: Ranq1
 	
 	double dev();
 };
+
+struct RNG: Normaldev
+{
+	RNG(double mmu, double ssig, unsigned long long i);
+	void shuffle(vector<int>& x);
+};
+
 
 #endif

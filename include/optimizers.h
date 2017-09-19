@@ -1,16 +1,21 @@
 #ifndef OPTIMIZERS
 #define OPTIMIZERS
 
+#include <string>
 #include <vector>
 #include "Node.h"
-// #include "Graph.h"
+
+//note that it's okay for multiple .cpp files to call this header, because everything is defined within a class
+//linkers allow for classes to be defined multiple times per program (but only once per translation unit, i.e. once per .cpp)
+
+//but might want to separating some of the function into a cpp anyway?
 
 struct Optimizer
 {
-	// Graph* graph;
+	string type;
 	vector< Node* > nodes;
 	
-	virtual void updateNodeParameters(Node* node, int element) {return;}
+	virtual void updateNodeParameters(Node* node, int element) { return; }
 	
 	void updateParameters()
 	{
@@ -35,8 +40,8 @@ namespace Optimizers
 	
 		virtual void updateNodeParameters(Node* node, int element)
 		{
-			int dim = multVec(node->dim);
-			for(int i=0; i<dim; i++) node->parameters[i] -= epsilon*(node->parameterGradient[i]);
+			int nParameters = node->nParameters;
+			for(int i=0; i<nParameters; i++) node->parameters[i] -= epsilon*(node->parameterGradient[i]);
 		}
 	
 		virtual void compile(vector< Node* > nodes_)
@@ -44,8 +49,8 @@ namespace Optimizers
 			nodes = nodes_;
 		}
 	
-		SGD(): Optimizer(), epsilon(0.0001) {};
-		SGD(double epsilon_): Optimizer(), epsilon(epsilon_) {};
+		SGD(): Optimizer(), epsilon(0.01) { type = "SGD";}
+		SGD(double epsilon_): Optimizer(), epsilon(epsilon_) {type = "SGD";}
 	};
 	
 	struct SGDMomentum : Optimizer
@@ -56,8 +61,8 @@ namespace Optimizers
 	
 		virtual void updateNodeParameters(Node* node, int element)
 		{
-			int dim = multVec(node->dim);
-			for(int i=0; i<dim; i++)
+			int nParameters = node->nParameters;
+			for(int i=0; i<nParameters; i++)
 			{
 				grad[element][i] = momentum*grad[element][i] + (1-momentum)*(node->parameterGradient[i]);
 				node->parameters[i] -= epsilon*grad[element][i];
@@ -71,49 +76,18 @@ namespace Optimizers
 			int nNodes = nodes_.size();
 			for(int i=0; i<nNodes; i++)
 			{
-				int dim = multVec(nodes[i]->dim);
-				double* p = new double[dim];
-				for(int j=0; j<dim; j++) p[j] = 0.0;
+				int nParameters = nodes[i]->nParameters;
+				double* p = new double[nParameters];
+				for(int j=0; j<nParameters; j++) p[j] = 0.0;
 				grad.push_back(p);
 			}
 		}
 	
-		SGDMomentum(): Optimizer(), epsilon(0.0001), momentum(0.99) {};
-		SGDMomentum(double epsilon_): Optimizer(), epsilon(epsilon_), momentum(0.99) {};
-		SGDMomentum(double epsilon_, double momentum_): Optimizer(), epsilon(epsilon_), momentum(momentum_) {};
+		SGDMomentum(): Optimizer(), epsilon(0.01), momentum(0.99) {type = "SGDMomentum";}
+		SGDMomentum(double epsilon_): Optimizer(), epsilon(epsilon_), momentum(0.99) {type = "SGDMomentum";}
+		SGDMomentum(double epsilon_, double momentum_): Optimizer(), epsilon(epsilon_), momentum(momentum_) {type = "SGDMomentum";}
 	};
-	
 }
 
 #endif
 
-//
-//
-// DNN.trainBatch(X, Y);
-//does one update on the batch
-//i.e. calculate gradient on the whole batch, and then one param update
-
-//process: 
-//clear stored gradients on parameters
-//loop through data points
-	//forward pass
-	//backward pass
-//at end of loop, ready for the optimizer to update its state
-//have it loop through each node and run its update
-	//e.g. SGD just adds the node's param gradient to its params; doesn't hold any additional data
-	//e.g. Momentum SGD calculates the updated estimate using the node's param gradients, then updates the params
-	//e.g. Adam updates estimates of first two moments, then updates nodes' params
-
-//BUT THIS REQUIRES that params are all the same object for every node... i.e. it will ask for double* parameters!
-//any way around this?
-
-	
-//this is called after each data point is processed
-// void incrementOptimizerState()	//member function of an optimizer... which presumably holds a pointer to the graph itself? or something
-// {
-// 	for(int i=0; i<nNodes; i++)
-// 	{
-// 		//update various optimizer stuff
-// 		//e.g.
-// 	}
-// }

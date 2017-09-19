@@ -1,5 +1,6 @@
 #include <math.h>
 #include <randomNumbers.h>
+#include <vector>
 
 Ranq1::Ranq1(unsigned long long j) : v(4101842887655102017LL) 
 {
@@ -32,4 +33,18 @@ double Normaldev::dev()
 	}
 	while(q > 0.27597 && (q > 0.27846 || v*v > -4.0*log(u)*u*u ));
 	return mu + sig*v/u;
+}
+
+RNG::RNG(double mmu, double ssig, unsigned long long i): Normaldev(mmu, ssig, i) {}
+
+void RNG::shuffle(vector<int>& x)
+{
+	int size = x.size();
+	for(int i=0; i<size; i++)
+	{
+		int pos = i + (int64() % (size-i));		//select position from remaining elements
+		int tmp = x[i];
+		x[i] = x[pos];
+		x[pos] = tmp;
+	}
 }

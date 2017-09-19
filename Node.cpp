@@ -53,9 +53,13 @@ InputNode::InputNode(string name_, vector<int> dim_)
 {
 	name = name_;
 	dim = dim_;
-	int totalDim = multVec(dim);
-	values = new double[totalDim];
-	gradient = new double[totalDim];
+	nValues = multVec(dim);
+	values = new double[nValues];
+	gradient = new double[nValues];
+	//is the above necessary? currently yes; these are set to 0 on backward pass; it is assumed to exist
+	//but it's wasted memory and computation
+	//fix?
+	nParameters = 0;
 	valuesUpdatedThisRound = false;
 	gradientUpdatedThisRound = false;
 }
@@ -82,6 +86,7 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 {
 	name = name_; 
 	dim.push_back(nNeurons);
+	nValues = nNeurons;
 	parents.push_back(parentNode);
 	activate = activate_;
 	
@@ -91,9 +96,10 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	nonActivatedValues = new double[nNeurons];
 	gradNonActivatedValues = new double[nNeurons];
 	//parameters and gradient
-	int dimIn = multVec(parentNode->dim);
-	parameters = new double[nNeurons + nNeurons*dimIn];		//size of weights + biases
-	parameterGradient = new double[nNeurons + nNeurons*dimIn];	//size of weights + biases
+	int dimIn = parentNode->nValues;
+	nParameters = nNeurons + nNeurons*dimIn;
+	parameters = new double[nParameters];		//size of weights + biases
+	parameterGradient = new double[nParameters];	//size of weights + biases
 	
 	//set the helper pointers to the right location
 	biases = parameters;	//biases start at 0
@@ -120,7 +126,7 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 void DenseNode::computeMyValues()
 {
 	Node* parent = parents[0];
-	int dimIn = multVec(parent->dim);
+	int dimIn = parent->nValues;
 	int dimOut = dim[0];	//only one
 	
 	//do matrix add, multiply, and activation
@@ -147,7 +153,7 @@ void DenseNode::incrementGradOnParameters()
 	//gradient on node's parameters depends on its parents' values
 	//dense layer has only one parent
 	Node* parent = parents[0];
-	int dimIn = multVec(parent->dim);
+	int dimIn = parent->nValues;
 	for(int i=0; i<dimOut; i++)
 	{
 		//double tmp = gradient[i]*gradNonActivatedValues[i];
@@ -166,7 +172,7 @@ void DenseNode::incrementGradOnParents()
 	
 	//dense layer has only one parent
 	Node* parent = parents[0];
-	int dimIn = multVec(parent->dim);
+	int dimIn = parent->nValues;
 	//remember, parent's gradient might have already been incremented by another child. so only increment here.
 	for(int i=0; i<dimIn; i++)
 	{
@@ -181,7 +187,7 @@ void DenseNode::printParameters()
 {
 	int dimOut = dim[0];	
 	Node* parent = parents[0];
-	int dimIn = multVec(parent->dim);
+	int dimIn = parent->nValues;
 	
 	cout << "biases:" << '\n';
 	for(int i=0; i<dimOut; i++) cout << biases[i] << " , ";
