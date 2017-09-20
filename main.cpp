@@ -45,7 +45,7 @@ int main()
 	Y.push_back(y);
 	
 	//Do some training!
-	int N = 10000;
+	int N = 1000;
 	vector< vector< double* > > XTrain(N);
 	vector< vector< double* > > YTrain(N);
 	
@@ -59,7 +59,8 @@ int main()
 	int nEpochs = 100;
 	int batchSize = 100;
 	bool verbose = false;
-	//verbose causes it to take like 40% longer
+	//verbose increases training time by ~10%
+	//because it calculates the error on each batch, so extra computation required
 	
 	cout << "Training error before: " << DNN.getError(XTrain, YTrain) << '\n';
 	

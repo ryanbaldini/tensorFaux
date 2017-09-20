@@ -38,7 +38,7 @@ void Graph::setOptimizer(Optimizer& optimizer_)
 
 
 //data is fed in as a vector of pointers to doubles
-void Graph::forwardSweep(vector< double* > X)
+void Graph::forwardSweep(vector< double* >& X)
 {
 	//check correct number of elements
 	
@@ -61,7 +61,7 @@ void Graph::forwardSweep(vector< double* > X)
 	}
 }
 
-void Graph::backwardSweep(vector< double* > Y)
+void Graph::backwardSweep(vector< double* >& Y)
 {
 	//check correct number of elements
 	
@@ -93,12 +93,8 @@ void Graph::backwardSweep(vector< double* > Y)
 	}
 }
 
-double Graph::getError(vector< vector< double* > > X, vector< vector< double* > > Y)
-{
-	int nSamples = X.size();
-	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }
-	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
-		
+double Graph::getError(vector< double* >& X, vector< double* >& Y)
+{		
 	double error = 0.0;
 	
 	int nNodes = nodes.size();
@@ -108,22 +104,61 @@ double Graph::getError(vector< vector< double* > > X, vector< vector< double* > 
 		if((nodes[i]->children).size() == 0) whichNodesAreTerminal.push_back(i);
 	}
 	int nTerminalNodes = whichNodesAreTerminal.size();
+	
+	//compute values
+	forwardSweep(X);
+	
+	//find error
+	for(int j=0; j<nTerminalNodes; j++)
+	{
+		int dim = nodes[whichNodesAreTerminal[j]]->nValues;
+		for(int k=0; k<dim; k++) error += loss.loss(Y[j][k], nodes[whichNodesAreTerminal[j]]->values[k]);
+	}
+	
+	return error;
+}
+
+double Graph::getError(vector< vector< double* > >& X, vector< vector< double* > >& Y)
+{
+	int nSamples = X.size();
+	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+		
+	double error = 0.0;
+	
 	for(int i=0; i<nSamples; i++)
 	{
-		forwardSweep(X[i]);
-		for(int j=0; j<nTerminalNodes; j++)
-		{
-			int dim = nodes[whichNodesAreTerminal[j]]->nValues;
-			for(int k=0; k<dim; k++) error += loss.loss(Y[i][j][k], nodes[whichNodesAreTerminal[j]]->values[k]);
-		}
+		error += getError(X[i],Y[i]);
 	}
 	error = error/nSamples;
 	return error;
 }
 	
+inline double Graph::getErrorOnAlreadyComputedValues(vector< double* >& Y)
+{
+	double error = 0.0;
+	
+	int nNodes = nodes.size();
+	vector<int> whichNodesAreTerminal;
+	for(int i=0; i<nNodes; i++)
+	{
+		if((nodes[i]->children).size() == 0) whichNodesAreTerminal.push_back(i);
+	}
+	int nTerminalNodes = whichNodesAreTerminal.size();
+	
+	//values already computed
+	
+	//find error
+	for(int j=0; j<nTerminalNodes; j++)
+	{
+		int dim = nodes[whichNodesAreTerminal[j]]->nValues;
+		for(int k=0; k<dim; k++) error += loss.loss(Y[j][k], nodes[whichNodesAreTerminal[j]]->values[k]);
+	}
+	
+	return error;
+}
 
-
-void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > > Y)
+void Graph::trainBatch(vector< vector< double* > >& X, vector< vector< double* > >& Y, bool verbose)
 {
 	int nSamples = X.size();
 		
@@ -138,11 +173,25 @@ void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > 
 	}
 	
 	//process data
-	for(int i=0; i<nSamples; i++)
+	if(verbose)
 	{
-		forwardSweep(X[i]);
-		backwardSweep(Y[i]);	//increments parameter gradients each time
-	}
+		double error = 0.0;
+		for(int i=0; i<nSamples; i++)
+		{
+			forwardSweep(X[i]);
+			error += getErrorOnAlreadyComputedValues(Y[i]);	
+			backwardSweep(Y[i]);	//increments parameter gradients each time
+		}
+		error = error/nSamples;
+		cout << "Pre-training error on batch: " << error << '\n';
+		
+	} else {
+		for(int i=0; i<nSamples; i++)
+		{
+			forwardSweep(X[i]);
+			backwardSweep(Y[i]);	//increments parameter gradients each time
+		}	
+	}	
 	
 	//take mean of incremented gradients to get the overall gradient
 	for(int i=0; i<nNodes; i++)
@@ -158,7 +207,7 @@ void Graph::trainBatch(vector< vector< double* > > X, vector< vector< double* > 
 	optimizer->updateParameters();
 }
 
-void Graph::train(vector< vector< double* > > X, vector< vector< double* > > Y, int nEpochs, int batchSize, bool verbose)
+void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y, int nEpochs, int batchSize, bool verbose)
 {
 	int nSamples = X.size();
 	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }	
@@ -166,10 +215,12 @@ void Graph::train(vector< vector< double* > > X, vector< vector< double* > > Y, 
 
 	//create an order array, which will be shuffled for each epoch
 	vector<int> order(nSamples);
-	for(int i=0; i++; i<nSamples) order[i] = i;
+	for(int i=0; i<nSamples; i++) order[i] = i;
 	
 	for(int i=0; i<nEpochs; i++)
 	{
+		if(verbose) cout << "***** BATCH " << i+1 << " *****" << '\n';
+		
 		//shuffle order in which they are processed
 		rng.shuffle(order);
 		
@@ -189,7 +240,7 @@ void Graph::train(vector< vector< double* > > X, vector< vector< double* > > Y, 
 						YBatch[k] = Y[order[place]];
 						place++;
 					}
-					trainBatch(XBatch, YBatch);
+					trainBatch(XBatch, YBatch, verbose);
 				}
 			}	
 		}
@@ -205,11 +256,8 @@ void Graph::train(vector< vector< double* > > X, vector< vector< double* > > Y, 
 				YBatch[j] = Y[order[place]];
 				place++;
 			}
-			trainBatch(XBatch, YBatch);
+			trainBatch(XBatch, YBatch, verbose);
 		}
-		
-		//report training error
-		if(verbose) cout << "Training error, epoch " << i+1 << ": " << getError(X, Y) << '\n';
 	}
 }
 
