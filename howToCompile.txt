@@ -1,0 +1,1 @@
+/usr/local/Cellar/gcc/6.3.0_1/bin/g++-6 functions.cpp randomNumbers.cpp activations.cpp loss.cpp Node.cpp Graph.cpp main.cpp -o ./main -Iinclude/ -O2
