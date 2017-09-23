@@ -2,6 +2,8 @@
 #include <string>
 #include <iostream>
 #include "Node.h"
+#include <ctime>
+#include <immintrin.h>
 
 using namespace std;
 
@@ -123,20 +125,37 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	}
 }
 
+
 void DenseNode::computeMyValues()
 {
 	Node* parent = parents[0];
 	int dimIn = parent->nValues;
 	int dimOut = dim[0];	//only one
 	
-	//do matrix add, multiply, and activation
+	//using SIMD
+	//currently have to use unaligned memory; no way to ensure alignment of each 
+	int nOutRemainder = dimOut % 4;
+	int nOutInto4 = dimOut - nOutRemainder;
+	int nInRemainder = dimIn % 4;
+	int nInInto4 = dimIn - nInRemainder;
 	for(int i=0; i<dimOut; i++)
 	{
-		nonActivatedValues[i] = biases[i];
-		for(int j=0; j<dimIn; j++)
+		__m256d accum = _mm256_setzero_pd();
+		for(int j=0; j<nInInto4; j+=4)
 		{
-			nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
+			__m256d vWeightsI = _mm256_loadu_pd(weights[i] + j);
+			__m256d vParentValues = _mm256_loadu_pd(parent->values + j);
+			// accum = _mm256_fmadd_pd(vWeightsI, vParentValues, accum);
+			accum += _mm256_mul_pd(vWeightsI, vParentValues);
 		}
+		//consider replacing the below with a single masked vector operation
+		nonActivatedValues[i] = biases[i];
+		nonActivatedValues[i] += accum[0];
+		nonActivatedValues[i] += accum[1];
+		nonActivatedValues[i] += accum[2];
+		nonActivatedValues[i] += accum[3];
+		for(int j = dimIn - nInRemainder; j<dimIn; j++) nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
+
 		values[i] = activate.activate(nonActivatedValues[i]);
 	}
 }
@@ -180,7 +199,8 @@ void DenseNode::incrementGradOnParents()
 		{
 			parent->gradient[i] += gradNonActivatedValues[j]*weights[j][i];	//bad stride on weights, but hard to fix that without hurting something else
 		}
-	}	
+	}
+	// __m256d* parentGradient = (__m256d*)(parent->gradient);
 }
 
 void DenseNode::printParameters()

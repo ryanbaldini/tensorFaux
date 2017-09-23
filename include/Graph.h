@@ -20,7 +20,7 @@ struct Graph
 	
 	void forwardSweep(vector< double* >& X);		//one vector element for each input node
 	void backwardSweep(vector< double* >& Y);	//one vector element for each output node
-	void trainBatch(vector< vector< double* > >& X, vector< vector< double* > >& Y, bool calculateError);	//each data point is a vector; a vector of them is batch
+	void trainBatch(vector< vector< double* > >& X, vector< vector< double* > >& Y, bool calculateError, double& time);	//each data point is a vector; a vector of them is batch
 	void train(vector< vector< double* > >& X, vector< vector< double* > >& Y, int nEpochs = 1, int batchSize = 10, bool verbose = false);	//each data point is a vector; a vector of them is batch
 	inline double getErrorOnAlreadyComputedValues(vector< double* >& Y);
 	double getError(vector< double* >& X, vector< double* >& Y);

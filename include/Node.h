@@ -14,11 +14,11 @@ struct Node
 	string name;
 	vector<int> dim;
 	int nValues;
-	double* values;				//computed values of the node; altered on forward pass
-	double* gradient;			//gradient on the values; altered on backward pass
+	alignas(32) double* values;				//computed values of the node; altered on forward pass
+	alignas(32) double* gradient;			//gradient on the values; altered on backward pass
 	int nParameters;
-	double* parameters;
-	double* parameterGradient;
+	alignas(32) double* parameters;
+	alignas(32) double* parameterGradient;
 	vector< Node* > parents;
 	vector< Node* > children;
 	Activation activate;
