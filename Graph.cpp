@@ -188,10 +188,10 @@ void Graph::trainBatch(vector< vector< double* > >& X, vector< vector< double* >
 	} else {
 		for(int i=0; i<nSamples; i++)
 		{
-			clock_t start = clock();
 			forwardSweep(X[i]);
-			time += (clock() - start);
+			clock_t start = clock();
 			backwardSweep(Y[i]);	//increments parameter gradients each time
+			time += (clock() - start);
 		}	
 	}	
 	
@@ -263,7 +263,7 @@ void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y
 			trainBatch(XBatch, YBatch, verbose, trainTime);
 		}
 	}
-	cout << "Time spent in forward sweeps: " << trainTime / (double)(CLOCKS_PER_SEC / 1000) << '\n';
+	cout << "Time spent in backward sweeps: " << trainTime / (double)(CLOCKS_PER_SEC / 1000) << '\n';
 }
 
 // vector< double* > Graph::computeAndReturn(vector< double* > X)
