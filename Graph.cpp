@@ -158,7 +158,7 @@ inline double Graph::getErrorOnAlreadyComputedValues(vector< double* >& Y)
 	return error;
 }
 
-void Graph::trainBatch(vector< vector< double* > >& X, vector< vector< double* > >& Y, bool verbose, double& time)
+void Graph::trainBatch(vector< vector< double* > >& X, vector< vector< double* > >& Y, bool verbose)
 {
 	int nSamples = X.size();
 		
@@ -189,9 +189,7 @@ void Graph::trainBatch(vector< vector< double* > >& X, vector< vector< double* >
 		for(int i=0; i<nSamples; i++)
 		{
 			forwardSweep(X[i]);
-			clock_t start = clock();
 			backwardSweep(Y[i]);	//increments parameter gradients each time
-			time += (clock() - start);
 		}	
 	}	
 	
@@ -219,8 +217,6 @@ void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y
 	vector<int> order(nSamples);
 	for(int i=0; i<nSamples; i++) order[i] = i;
 	
-	double trainTime = 0.0;
-	
 	for(int i=0; i<nEpochs; i++)
 	{
 		if(verbose) cout << "***** BATCH " << i+1 << " *****" << '\n';
@@ -244,7 +240,7 @@ void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y
 						YBatch[k] = Y[order[place]];
 						place++;
 					}
-					trainBatch(XBatch, YBatch, verbose, trainTime);
+					trainBatch(XBatch, YBatch, verbose);
 				}
 			}	
 		}
@@ -260,10 +256,9 @@ void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y
 				YBatch[j] = Y[order[place]];
 				place++;
 			}
-			trainBatch(XBatch, YBatch, verbose, trainTime);
+			trainBatch(XBatch, YBatch, verbose);
 		}
 	}
-	cout << "Time spent in backward sweeps: " << trainTime / (double)(CLOCKS_PER_SEC / 1000) << '\n';
 }
 
 // vector< double* > Graph::computeAndReturn(vector< double* > X)

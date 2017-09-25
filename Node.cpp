@@ -167,21 +167,7 @@ void DenseNode::incrementGradOnParameters()
 	// int nOutInto4 = dimOut - nOutRemainder;
 	int nInRemainder = dimIn % 4;
 	int nInInto4 = dimIn - nInRemainder;	
-	
-	// update gradient on non-activated values
-	// for(int i=0; i<dimOut; i++)
-	// {
-	// 	gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
-	// }
-	// for(int i=0; i<nOutInto4; i+=4)
-	// {
-	// 	gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
-	// 	gradNonActivatedValues[i+1] = gradient[i+1]*activate.gradient(nonActivatedValues[i+1]);
-	// 	gradNonActivatedValues[i+2] = gradient[i+2]*activate.gradient(nonActivatedValues[i+2]);
-	// 	gradNonActivatedValues[i+3] = gradient[i+3]*activate.gradient(nonActivatedValues[i+3]);
-	// }
-	// for(int i = nOutInto4; i<dimOut; i++) gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
-	
+		
 	//gradient on node's parameters depends on its parents' values
 	//dense layer has only one parent
 	for(int i=0; i<dimOut; i++)
@@ -194,22 +180,6 @@ void DenseNode::incrementGradOnParameters()
 		biases_gradient[i] += gradNonActivatedValues[i];
 		
 		//weights
-		// __m256d vGradNonActivatedValuesI = _mm256_set1_pd(gradNonActivatedValues[i]);
-		// __m256d output;
-		// for(int j=0; j<nInInto4; j+=4)
-		// {
-		// 	__m256d vParentValues = _mm256_loadu_pd(parent->values + j);
-		// 	output = _mm256_mul_pd(vGradNonActivatedValuesI, vParentValues);
-		// 	weights_gradient[i][j] += output[0];
-		// 	weights_gradient[i][j+1] += output[1];
-		// 	weights_gradient[i][j+2] += output[2];
-		// 	weights_gradient[i][j+3] += output[3];
-		// 	// weights_gradient[i][j] += gradNonActivatedValues[i]*(parent->values[j]);
-		// 	// weights_gradient[i][j+1] += gradNonActivatedValues[i]*(parent->values[j+1]);
-		// 	// weights_gradient[i][j+2] += gradNonActivatedValues[i]*(parent->values[j+2]);
-		// 	// weights_gradient[i][j+3] += gradNonActivatedValues[i]*(parent->values[j+3]);
-		// }
-		// for(int j = nInInto4; j<dimIn; j++) weights_gradient[i][j] += gradNonActivatedValues[i]*(parent->values[j]);
 		//failed to get any boost from vectorization
 		for(int j=0; j<dimIn; j++)
 		{
