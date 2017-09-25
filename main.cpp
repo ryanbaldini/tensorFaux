@@ -12,9 +12,10 @@ int main()
 	vector<int> dimInt;
 	int n=3;
 	dimInt.push_back(n);
+	// dimInt.push_back(n);
 	
 	DNN.addInputNode("input1", dimInt);
-	// DNN.addInputNode("input1", dimInt);
+	// DNN.addConvolution2DNode("conv1", "input1", 10, {3, 3}, "valid", Activations::leakyRelu);
 	DNN.addDenseNode("dense1", "input1", 100, Activations::leakyRelu);
 	DNN.addDenseNode("dense2", "dense1", 100, Activations::leakyRelu);
 	DNN.addDenseNode("dense3", "dense2", 100, Activations::leakyRelu);

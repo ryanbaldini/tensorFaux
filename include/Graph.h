@@ -30,6 +30,7 @@ struct Graph
 	
 	void addInputNode(string name, vector<int> dim);
 	void addDenseNode(string name, string parentNodeName, int nNeurons, Activation activate);
+	void addConvolution2DNode(string name, string parentNodeName, int nKernels, vector<int> dimKernel, string borderMode, Activation activate);
 	
 	void printParameters(string name);
 	

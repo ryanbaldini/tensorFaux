@@ -211,7 +211,7 @@ void Graph::train(vector< vector< double* > >& X, vector< vector< double* > >& Y
 {
 	int nSamples = X.size();
 	try { if(nSamples != Y.size()) throw string("X and Y do not have the same number of samples."); }	
-	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
 
 	//create an order array, which will be shuffled for each epoch
 	vector<int> order(nSamples);
@@ -288,7 +288,7 @@ void Graph::addInputNode(string name, vector<int> dim)
 			if(nodes[i]->name == name) throw "The name '" + name + "' is already taken.";
 		}
 	}
-	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
 		
 	Node* newNode = new InputNode(name, dim);
 	nodes.push_back(newNode);
@@ -307,7 +307,7 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activ
 		}
 		if(nNeurons <= 0) throw string("nNeurons must be positive integer");
 	}
-	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; }
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
 	
 	//define parent
 	//probably make this into a function
@@ -323,6 +323,44 @@ void Graph::addDenseNode(string name, string parentNodeName, int nNeurons, Activ
 	
 	//add to nodes
 	Node* newNode = new DenseNode(name, parentNode, nNeurons, activate, rng);
+	nodes.push_back(newNode);
+	
+	//add to parents' children
+	(parentNode->children).push_back(newNode);
+}
+
+void Graph::addConvolution2DNode(string name, string parentNodeName, int nKernels, vector<int> dimKernel, string borderMode, Activation activate)
+{
+	//check for errors
+	int nNodes = nodes.size();
+	try
+	{
+		for(int i=0; i<nNodes; i++)
+		{
+			if(nodes[i]->name == name) throw "The name '" + name + "' is already taken.";
+		}
+		if(nKernels <= 0) throw string("nKernels must be positive integer");
+		if(dimKernel.size() != 2) throw string("dimKernel must have 2 elements. May enter in {x,y} format.");
+		if(dimKernel[0] <= 0) throw string("dimKernel must have positive values");
+		if(dimKernel[1] <= 0) throw string("dimKernel must have positive values");
+		if(borderMode != "same" & borderMode != "valid") throw string("borderMode must be 'same' or 'valid'");
+	}
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
+	
+	//define parent
+	//probably make this into a function
+	Node* parentNode;
+	for(int i=0; i<nNodes; i++)
+	{
+		if((nodes[i])->name == parentNodeName)
+		{
+			parentNode = nodes[i];
+			break;
+		}
+	}
+	
+	//add to nodes
+	Node* newNode = new Convolution2DNode(name, parentNode, nKernels, dimKernel, borderMode, activate, rng);
 	nodes.push_back(newNode);
 	
 	//add to parents' children

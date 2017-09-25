@@ -115,14 +115,7 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	}
 	
 	//initialize parameters at random
-	for(int i=0; i<nNeurons; i++)
-	{
-		biases[i] = rng.dev();
-		for(int j=0; j<dimIn; j++)
-		{
-			weights[i][j] = rng.dev();
-		}
-	}
+	for(int i=0; i<nParameters; i++) parameters[i] = rng.dev();
 }
 
 
@@ -223,4 +216,95 @@ void DenseNode::printParameters()
 		for(int j=0; j<dimIn; j++) cout << weights[i][j] << " , ";
 		cout << '\n';
 	}
+}
+
+
+Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernels, vector<int> dimKernel, string borderMode_, Activation activate_, Normaldev& rng)
+{
+	//first check that input node is correct dimension
+	try { 
+		if(parentNode->dim.size() != 2 & parentNode->dim.size() != 3) throw string("Input is not either 2 or 3 dimensions."); 
+		if(borderMode_ != "valid" & borderMode_ != "same") throw string("borderMode must be 'valid' or 'same'");
+	}
+	catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
+
+	name = name_;
+	dim.resize(3);
+	parents.push_back(parentNode);
+
+	int inputDepth, inputHeight, inputWidth;
+	if(parentNode->dim.size() == 2)
+	{
+		inputDepth = 1; inputHeight = parentNode->dim[0]; inputWidth = parentNode->dim[1];
+	}
+	else
+	{
+		inputDepth = parentNode->dim[0]; inputHeight = parentNode->dim[1]; inputWidth = parentNode->dim[2];
+	}
+	//dim depends on type
+	if(borderMode_ == "valid")
+	{
+		borderMode = "valid";
+
+		try
+		{
+			if(inputHeight < dimKernel[0] | inputWidth < dimKernel[1])
+			{
+				throw string("Kernel doesn't fit in image. "
+					"Image has dim (" + to_string(inputHeight) + "," + to_string(inputWidth) + "). " +
+					"Kernel has dim (" + to_string(dimKernel[0]) + "," + to_string(dimKernel[1]) + ").");
+			}
+		}
+		catch(string exception) { cerr << "ERROR: " << exception << '\n' ; return; }
+
+		dim[0] = nKernels;
+		dim[1] = inputHeight - dimKernel[0] + 1;
+		dim[2] = inputWidth - dimKernel[1] + 1; ;
+
+	}
+	else if(borderMode_ == "same")
+	{
+		borderMode = "same";
+
+		dim[0] = nKernels;
+		dim[1] = inputHeight;
+		dim[2] = inputWidth;
+
+	}
+	nValues = dim[0]*dim[1]*dim[2];
+
+	values = new double[nValues];
+	gradient = new double[nValues];
+	nonActivatedValues = new double[nValues];
+	gradNonActivatedValues = new double[nValues];
+
+	nParameters = nKernels + inputDepth*dimKernel[0]*dimKernel[1];
+	parameters = new double[nParameters];		//size of weights + biases
+	parameterGradient = new double[nParameters];	//size of weights + biases
+
+	activate = activate_;
+
+	//set the helper pointers to the right location
+	biases = parameters;	//biases start at 0
+	biases_gradient = parameterGradient;
+	kernels = new double***[nKernels];		//each will point to the appropriate location
+	kernels_gradient = new double***[nKernels];
+	for(int i=0; i<nKernels; i++)
+	{
+		kernels[i] = new double**[inputDepth];
+		kernels_gradient[i] = new double**[inputDepth];
+		for(int j=0; j<inputDepth; j++)
+		{
+			kernels[i][j] = new double*[inputHeight];
+			kernels_gradient[i][j] = new double*[inputHeight];
+			for(int k=0; k<inputHeight; k++)
+			{
+				kernels[i][j][k] = parameters + nKernels + dimKernel[1]*(dimKernel[0]*(inputDepth*i + j) + k);
+				kernels[i][j][k] = parameterGradient + nKernels + dimKernel[1]*(dimKernel[0]*(inputDepth*i + j) + k);
+			}
+		}
+	}
+
+	//initialize parameters at random
+	for(int i=0; i<nParameters; i++) parameters[i] = rng.dev();
 }

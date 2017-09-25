@@ -40,11 +40,9 @@ struct InputNode: Node
 {	
 	InputNode(string name_, vector<int> dim_);	
 	
-	virtual void computeMyValues();	
-	
+	virtual void computeMyValues();		
 	virtual void incrementGradOnParameters();
 	virtual void incrementGradOnParents();
-	
 	virtual void printParameters();
 };
 
@@ -68,5 +66,26 @@ struct DenseNode: Node
 	
 	virtual void printParameters();
 };
+
+struct Convolution2DNode: Node
+{
+	string borderMode;
+	double* nonActivatedValues;
+	double* gradNonActivatedValues;
+	double* biases;		//of length k, number of kernels
+	double**** kernels;	//of dim (k, c, x, y), where c is the number of input channels and (x,y) the 2d dim of kernel
+	double* biases_gradient;
+	double**** kernels_gradient;
+	
+	Convolution2DNode(string name_, Node* parentNode, int nKernels, vector<int> dimKernel, string borderMode_, Activation activate_, Normaldev& rng);
+	
+	// virtual void computeMyValues();
+	//
+	// virtual void incrementGradOnParameters();
+	// virtual void incrementGradOnParents();
+	//
+	// virtual void printParameters();
+};
+
 
 #endif
