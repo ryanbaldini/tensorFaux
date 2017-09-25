@@ -7,7 +7,7 @@ using namespace std;
 int main()
 {	
 	int seed = 0;
-	Graph DNN(seed);	
+	Graph DNN(seed);
 	
 	vector<int> dimInt;
 	int n=3;
@@ -66,7 +66,6 @@ int main()
 	
 	clock_t start = clock();
 	DNN.train(XTrain, YTrain, nEpochs, batchSize, verbose);
-	cout << "Training time: " << (clock() - start) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << '\n';
 		
 	cout << "Training error after: " << DNN.getError(XTrain, YTrain) << '\n';
 	

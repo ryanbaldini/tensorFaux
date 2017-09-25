@@ -2,6 +2,8 @@
 #include <string>
 #include <iostream>
 #include "Node.h"
+#include <ctime>
+#include <immintrin.h>
 
 using namespace std;
 
@@ -123,42 +125,62 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	}
 }
 
+
 void DenseNode::computeMyValues()
 {
 	Node* parent = parents[0];
 	int dimIn = parent->nValues;
 	int dimOut = dim[0];	//only one
 	
-	//do matrix add, multiply, and activation
+	//using SIMD
+	//currently have to use unaligned memory; no way to ensure alignment of each 
+	int nInRemainder = dimIn % 4;
+	int nInInto4 = dimIn - nInRemainder;
 	for(int i=0; i<dimOut; i++)
 	{
-		nonActivatedValues[i] = biases[i];
-		for(int j=0; j<dimIn; j++)
+		__m256d accum = _mm256_setzero_pd();
+		for(int j=0; j<nInInto4; j+=4)
 		{
-			nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
+			__m256d vWeightsI = _mm256_loadu_pd(weights[i] + j);
+			__m256d vParentValues = _mm256_loadu_pd(parent->values + j);
+			// accum = _mm256_fmadd_pd(vWeightsI, vParentValues, accum);	//not working for some reason
+			accum += _mm256_mul_pd(vWeightsI, vParentValues);
 		}
+		//consider replacing the below with a single masked vector operation
+		nonActivatedValues[i] = biases[i];
+		nonActivatedValues[i] += accum[0];
+		nonActivatedValues[i] += accum[1];
+		nonActivatedValues[i] += accum[2];
+		nonActivatedValues[i] += accum[3];
+		for(int j = nInInto4; j<dimIn; j++) nonActivatedValues[i] += weights[i][j]*((parent->values)[j]);
+
 		values[i] = activate.activate(nonActivatedValues[i]);
 	}
 }
 
 void DenseNode::incrementGradOnParameters()
 {
-	//update gradient on non-activated values
 	int dimOut = dim[0];
-	for(int i=0; i<dimOut; i++)
-	{
-		gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
-	}
-	
-	//gradient on node's parameters depends on its parents' values
-	//dense layer has only one parent
 	Node* parent = parents[0];
 	int dimIn = parent->nValues;
+	// int nOutRemainder = dimOut % 4;
+	// int nOutInto4 = dimOut - nOutRemainder;
+	int nInRemainder = dimIn % 4;
+	int nInInto4 = dimIn - nInRemainder;	
+		
+	//gradient on node's parameters depends on its parents' values
+	//dense layer has only one parent
 	for(int i=0; i<dimOut; i++)
 	{
-		//double tmp = gradient[i]*gradNonActivatedValues[i];
-		//consider checking if tmp is zero: might save time if we initialize these to 0 upfront? esp for those multiplications for the weights
+		//first gradient on non-activated values
+		gradNonActivatedValues[i] = gradient[i]*activate.gradient(nonActivatedValues[i]);
+		
+		//now the parameters
+		//biases
 		biases_gradient[i] += gradNonActivatedValues[i];
+		
+		//weights
+		//failed to get any boost from vectorization
 		for(int j=0; j<dimIn; j++)
 		{
 			weights_gradient[i][j] += gradNonActivatedValues[i]*(parent->values[j]);
@@ -174,13 +196,15 @@ void DenseNode::incrementGradOnParents()
 	Node* parent = parents[0];
 	int dimIn = parent->nValues;
 	//remember, parent's gradient might have already been incremented by another child. so only increment here.
-	for(int i=0; i<dimIn; i++)
+	//this is much better than doing the loop the other way. much better stride.
+	for(int i=0; i<dimOut; i++)
 	{
-		for(int j=0; j<dimOut; j++)
+		for(int j=0; j<dimIn; j++)
 		{
-			parent->gradient[i] += gradNonActivatedValues[j]*weights[j][i];	//bad stride on weights, but hard to fix that without hurting something else
+			parent->gradient[j] += gradNonActivatedValues[i]*weights[i][j];
 		}
-	}	
+	}
+	
 }
 
 void DenseNode::printParameters()
