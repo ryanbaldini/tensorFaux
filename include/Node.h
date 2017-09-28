@@ -76,10 +76,11 @@ struct Convolution2DNode: Node
 	double**** kernels;	//of dim (k, c, x, y), where c is the number of input channels and (x,y) the 2d dim of kernel
 	double* biases_gradient;
 	double**** kernels_gradient;
+	vector<int> dimKernel;
 	
 	Convolution2DNode(string name_, Node* parentNode, int nKernels, vector<int> dimKernel, string borderMode_, Activation activate_, Normaldev& rng);
 	
-	// virtual void computeMyValues();
+	virtual void computeMyValues();
 	//
 	// virtual void incrementGradOnParameters();
 	// virtual void incrementGradOnParents();

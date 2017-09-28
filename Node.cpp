@@ -219,7 +219,7 @@ void DenseNode::printParameters()
 }
 
 
-Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernels, vector<int> dimKernel, string borderMode_, Activation activate_, Normaldev& rng)
+Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernels, vector<int> dimKernel_, string borderMode_, Activation activate_, Normaldev& rng)
 {
 	//first check that input node is correct dimension
 	try { 
@@ -231,6 +231,7 @@ Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernel
 	name = name_;
 	dim.resize(3);
 	parents.push_back(parentNode);
+	dimKernel = dimKernel_;
 
 	int inputDepth, inputHeight, inputWidth;
 	if(parentNode->dim.size() == 2)
@@ -271,14 +272,14 @@ Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernel
 		dim[2] = inputWidth;
 
 	}
+	
 	nValues = dim[0]*dim[1]*dim[2];
-
 	values = new double[nValues];
 	gradient = new double[nValues];
 	nonActivatedValues = new double[nValues];
 	gradNonActivatedValues = new double[nValues];
 
-	nParameters = nKernels + inputDepth*dimKernel[0]*dimKernel[1];
+	nParameters = nKernels*(1 + inputDepth*dimKernel[0]*dimKernel[1]);
 	parameters = new double[nParameters];		//size of weights + biases
 	parameterGradient = new double[nParameters];	//size of weights + biases
 
@@ -295,16 +296,89 @@ Convolution2DNode::Convolution2DNode(string name_, Node* parentNode, int nKernel
 		kernels_gradient[i] = new double**[inputDepth];
 		for(int j=0; j<inputDepth; j++)
 		{
-			kernels[i][j] = new double*[inputHeight];
-			kernels_gradient[i][j] = new double*[inputHeight];
-			for(int k=0; k<inputHeight; k++)
+			kernels[i][j] = new double*[dimKernel[0]];
+			kernels_gradient[i][j] = new double*[dimKernel[0]];
+			for(int k=0; k<dimKernel[0]; k++)
 			{
 				kernels[i][j][k] = parameters + nKernels + dimKernel[1]*(dimKernel[0]*(inputDepth*i + j) + k);
-				kernels[i][j][k] = parameterGradient + nKernels + dimKernel[1]*(dimKernel[0]*(inputDepth*i + j) + k);
+				kernels_gradient[i][j][k] = parameterGradient + nKernels + dimKernel[1]*(dimKernel[0]*(inputDepth*i + j) + k);
 			}
 		}
 	}
 
 	//initialize parameters at random
 	for(int i=0; i<nParameters; i++) parameters[i] = rng.dev();
+}
+
+void Convolution2DNode::computeMyValues()
+{
+	Node* parent = parents[0];
+	// int dimIn = parent->nValues;
+	// int dimOut = dim[0];	//only one
+	
+	//some shorthand
+	int inputDepth = parent->dim[0]; 
+	int inputHeight = parent->dim[1]; 
+	int inputWidth = parent->dim[2];
+	int nKernels = dim[0];
+	int outputHeight = dim[1];
+	int outputWidth = dim[2];
+	
+	if(borderMode == "valid")
+	{	
+		//do convolutions
+		//maybe use OpenMP at this highest loop level?
+		//haven't found out a good way
+		for(int i=0; i<nKernels; i++)
+		{
+			int tmp1 = i*outputHeight*outputWidth;
+			for(int j=0; j<inputDepth; j++)
+			{
+				int tmp2 = j*inputHeight*inputWidth;
+				for(int k=0; k<outputHeight; k++)
+				{
+					int tmp3 = k*outputWidth;
+					for(int l=0; l<outputWidth; l++)
+					{
+						if(j == 0) nonActivatedValues[tmp1 + tmp3 + l] = biases[i];
+						for(int m=0; m<dimKernel[0]; m++)
+						{
+							for(int n=0; n<dimKernel[1]; n++)
+							{
+								nonActivatedValues[tmp1 + tmp3 + l] += parent->values[tmp2 + (k+m)*inputWidth + l + n] * kernels[i][j][m][n];
+							}
+						}
+					}
+				}
+			}
+		}
+	}	
+	
+	// else //is "same"
+	// {
+	// 	for(int i=0; i<nKernels; i++)
+	// 	{
+	// 		for(int j=0; j<inputDepth; j++)
+	// 		{
+	// 			for(int k=0; k<outputHeight; k++)
+	// 			{
+	// 				for(int l=0; l<outputWidth; l++)
+	// 				{
+	// 					output[i][k][l] = biases[i];
+	// 					for(int m=0; m<dimKernel[0]; m++)
+	// 					{
+	// 						for(int n=0; n<dimKernel[1]; n++)
+	// 						{
+	// 							output[i][k][l] += input[j][k+m][l+n] * kernels[i][j][k+m][l+n];
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	
+	//activate
+	for(int i=0; i<nValues; i++) values[i] = activate.activate(nonActivatedValues[i]);
+	
 }
