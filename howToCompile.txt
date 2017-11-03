@@ -1,4 +1,4 @@
 /usr/local/Cellar/gcc/6.3.0_1/bin/g++-6 functions.cpp randomNumbers.cpp activations.cpp loss.cpp Node.cpp Graph.cpp main.cpp -o ./main -Iinclude/ -O3
 
 #with vectorization:
-/usr/local/Cellar/gcc/6.3.0_1/bin/g++-6 functions.cpp randomNumbers.cpp activations.cpp loss.cpp Node.cpp Graph.cpp main.cpp -o ./main -Iinclude/ -O3 -mavx2
+/usr/local/Cellar/gcc/6.3.0_1/bin/g++-6 functions.cpp randomNumbers.cpp activations.cpp loss.cpp Node.cpp Graph.cpp main.cpp -o ./main -Iinclude/ -O3 -mavx2 -mfma

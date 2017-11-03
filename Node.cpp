@@ -93,11 +93,13 @@ DenseNode::DenseNode(string name_, Node* parentNode, int nNeurons, Activation ac
 	activate = activate_;
 	
 	//values and gradient
+	//could 32-align all these
 	values = new double[nNeurons];
 	gradient = new double[nNeurons];
 	nonActivatedValues = new double[nNeurons];
 	gradNonActivatedValues = new double[nNeurons];
 	//parameters and gradient
+	//could 32-align each column/row in the matrix... some space would be wasted
 	int dimIn = parentNode->nValues;
 	nParameters = nNeurons + nNeurons*dimIn;
 	parameters = new double[nParameters];		//size of weights + biases
@@ -126,7 +128,6 @@ void DenseNode::computeMyValues()
 	int dimOut = dim[0];	//only one
 	
 	//using SIMD
-	//currently have to use unaligned memory; no way to ensure alignment of each 
 	int nInRemainder = dimIn % 4;
 	int nInInto4 = dimIn - nInRemainder;
 	for(int i=0; i<dimOut; i++)
@@ -136,8 +137,7 @@ void DenseNode::computeMyValues()
 		{
 			__m256d vWeightsI = _mm256_loadu_pd(weights[i] + j);
 			__m256d vParentValues = _mm256_loadu_pd(parent->values + j);
-			// accum = _mm256_fmadd_pd(vWeightsI, vParentValues, accum);	//not working for some reason
-			accum += _mm256_mul_pd(vWeightsI, vParentValues);
+			accum = _mm256_fmadd_pd(vWeightsI, vParentValues, accum);	//gotta compile w/ fma option enabled
 		}
 		//consider replacing the below with a single masked vector operation
 		nonActivatedValues[i] = biases[i];
@@ -187,17 +187,20 @@ void DenseNode::incrementGradOnParents()
 	
 	//dense layer has only one parent
 	Node* parent = parents[0];
-	int dimIn = parent->nValues;
-	//remember, parent's gradient might have already been incremented by another child. so only increment here.
-	//this is much better than doing the loop the other way. much better stride.
-	for(int i=0; i<dimOut; i++)
+	//only do this if parent isn't an input node; we don't care about gradient on input values!
+	if(parent->parents.size() > 0)
 	{
-		for(int j=0; j<dimIn; j++)
+		int dimIn = parent->nValues;
+		//remember, parent's gradient might have already been incremented by another child. so only increment here.
+		//this is much better than doing the loop the other way. much better stride.
+		for(int i=0; i<dimOut; i++)
 		{
-			parent->gradient[j] += gradNonActivatedValues[i]*weights[i][j];
+			for(int j=0; j<dimIn; j++)
+			{
+				parent->gradient[j] += gradNonActivatedValues[i]*weights[i][j];
+			}
 		}
 	}
-	
 }
 
 void DenseNode::printParameters()
